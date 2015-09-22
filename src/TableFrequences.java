@@ -45,11 +45,13 @@ public class TableFrequences {
 		        }
 				
 			}
-			
+			reader.close();
+			in.close();
 			
 		} catch (IOException e) {
 			
 		}
+		
 		printTable();
 	}
 
@@ -62,14 +64,12 @@ public class TableFrequences {
 	
 	
 	public void sortTable() {
-		
 		Collections.sort(getTf(), new Comparator<Caractere>() {
 			@Override
 			public int compare(Caractere element1, Caractere element2) {
 				return Integer.compare(element1.getNbr(), element2.getNbr());
 			}
 		});
-		
 	}
 
 	public ArrayList<Caractere> getTf() {
