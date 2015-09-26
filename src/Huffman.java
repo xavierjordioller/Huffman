@@ -1,11 +1,13 @@
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -19,19 +21,27 @@ public class Huffman {
 
 	public static void main(String[] args) {
 
+		createFile();
+
+		decodeFile();
+	}
+
+	private static void createFile() {
+		for(int i = 0; i < 256; i++) {
+			System.out.println(i + " = " + (char)i);
+		}
+		
+		
 		// Appel au constructeur de la classe TableFrequences
-		/*tf = new TableFrequences(
+		tf = new TableFrequences(
 				Paths.get("C:/Users/AK79880/testing/encode.txt"));
 		tf.printTable();
 		// tf.sortTable();
 		tf.printTable();
-	//	tf.getTf().add(new Caractere(-1));
-	
 
 		Map<Integer, String> map = BinaryTree.creerCorespondance(
 				creerArbre(tf), "");
 		String encodage = encoderFichier(map);
-
 		// on le normalize a un multiple de 8 (rajoute de 0 a la fin )
 
 		if (encodage.length() % 8 != 0) {
@@ -40,9 +50,7 @@ public class Huffman {
 			encodage += new String(chars);
 		}
 
-		createFile(encodage, map);*/
-
-		 decodeFile();
+		createFile(encodage, map, tf.getTotalSize());
 	}
 
 	private static BinaryTree creerArbre(TableFrequences tf) {
@@ -94,7 +102,7 @@ public class Huffman {
 		return stringBuilder.toString();
 	}
 
-	private static void createFile(String encoding, Map<Integer, String> map) {
+	private static void createFile(String encoding, Map<Integer, String> map, int size) {
 		PrintWriter writer = null;
 
 		try {
@@ -102,85 +110,97 @@ public class Huffman {
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
+		StringBuilder textToWrite = new StringBuilder();
 		for (Entry<Integer, String> entry : map.entrySet()) {
-			writer.print(".");
-
-			int i = 0;
-
-			if (!entry.getValue().matches("0+")) {
-				while (true) {
-					if (entry.getValue().charAt(i) == '0') {
-						i++;
-					} else {
-						break;
-					}
-				}
-			}
-
 			int integer = entry.getKey();
-			if (i > 0) {
-				writer.print(i
-						+ ">"
-						+ (char) Integer.parseInt(
-								entry.getValue().substring(i,
-										entry.getValue().length()), 2) + "="
-						+ ((char) integer));
-			} else {
-				writer.print(">" + (char) Integer.parseInt(entry.getValue(), 2)
-						+ "=" + ((char) integer));
-			}
+			textToWrite.append(entry.getValue() + "=" + (char)integer);
 		}
-		writer.print("|");
-
+		textToWrite.append("|");
+		writer.write(textToWrite.toString());
+		
+		StringBuilder encodedText = new StringBuilder();
 		for (int i = 0; i < encoding.length(); i += 8) {
 			String tempEncoding = encoding.substring(i, i + 8);
-
-			int value = Integer.parseInt(tempEncoding, 2);
-			String character = String.valueOf(Character.toChars(value));
-			writer.print(character);
+			encodedText.append(Integer.parseInt(tempEncoding, 2));
+			encodedText.append(".");
 		}
+		
+		encodedText.insert(0, size + "|");
+		writer.print(encodedText.toString());
 		writer.close();
 	}
+	
 
 	private static void decodeFile() {
-		Map<String, Integer> map = new HashMap<String, Integer>();
 		try {
 			InputStream in = Files.newInputStream(Paths
 					.get("C:/Users/AK79880/testing/encoded.txt"));
 			BufferedReader reader = new BufferedReader(
 					new InputStreamReader(in));
 
+			Map<String, Character> associativeMap = new HashMap<String, Character>();
+			
 			int ch = 0;
-			ch = reader.read();
-			while(true) {
-				StringBuilder tempString  = new StringBuilder();
+			do {
+				StringBuilder key = new StringBuilder(readUntil(ch, '=', reader));
+				associativeMap.put(key.toString(), (char)reader.read());
+				ch = reader.read();
+			} while(ch != '|');
+			
+			int numberOfCharacters = Integer.parseInt(readUntil(0, '|', reader));
+			
+			// need to get everything here
+			StringBuilder textEncoded = new StringBuilder();
+			/*while ((ch = reader.read()) != -1) {
+				StringBuilder binaryString = new StringBuilder(Integer.toBinaryString(ch));
 				
-				if(ch != '>') {
-					char number = (char) ch;
-					char[] chars = new char[Integer.parseInt(number + "")];
+				textEncoded.append(binaryString);
+			}*/
+			
+			String line = reader.readLine();
+			line = line.substring(0, line.length() - 1);
+			StringBuilder encodedBinaryString = new StringBuilder();
+			for(String number : line.split("\\.")) {
+				StringBuilder binaryNumber = new StringBuilder(Integer.toBinaryString(Integer.parseInt(number)));
+				if (binaryNumber.length() % 8 != 0) {
+					char[] chars = new char[8 - (binaryNumber.length() % 8)];
 					Arrays.fill(chars, '0');
-					tempString.append(new String(chars));
-					reader.read();
+					binaryNumber.insert(0, new String(chars));
 				}
-				
-				ch = reader.read();
-				tempString.append(Integer.toBinaryString(ch));
-				reader.read();
-				ch = reader.read();
-				map.put(tempString.toString(), ch);
-				ch = reader.read();
-				if(ch == '|') {
-					break;
-				}
-				ch = reader.read();
+				encodedBinaryString.append(binaryNumber.toString());
 			}
+				
+			
+			StringBuilder currentEncodedString = new StringBuilder();
+			StringBuilder decodedString = new StringBuilder();
+			
+			for(char character : encodedBinaryString.toString().toCharArray()) {
+				currentEncodedString.append(character);
+				if(associativeMap.containsKey(currentEncodedString.toString())) {
+					decodedString.append(associativeMap.get(currentEncodedString.toString()));
+					currentEncodedString = new StringBuilder();
+				}
+				if(decodedString.length() == numberOfCharacters) break;
+			}
+				
 			
 			reader.close();
 			in.close();
-
+			createNewFile(decodedString.toString());
 		} catch (IOException e) {
 
 		}
+	}
+	
+	private static void createNewFile(String output) {
+		PrintWriter writer = null;
+		try {
+			writer = new PrintWriter("C:/Users/AK79880/testing/decoded.txt");
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		writer.print(output);
+		writer.close();
 	}
 
 	public static <K, V> HashMap<V, K> reverse(Map<K, V> map) {
@@ -188,5 +208,23 @@ public class Huffman {
 		for (Map.Entry<K, V> entry : map.entrySet())
 			rev.put(entry.getValue(), entry.getKey());
 		return rev;
+	}
+	
+	private static String readUntil(int charToAdd, char character, BufferedReader reader) {
+		StringBuilder builder = new StringBuilder();
+		if(charToAdd != 0)
+			builder.append((char)charToAdd);
+		char currentCharacter;
+		try {
+			currentCharacter = (char)reader.read();
+		
+		while(currentCharacter != character) {
+			builder.append(currentCharacter);
+			currentCharacter = (char)reader.read();
+		}
+		return builder.toString();
+		} catch (IOException e) {
+			return builder.toString();
+		}
 	}
 }

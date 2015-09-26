@@ -75,4 +75,13 @@ public class TableFrequences {
 	public ArrayList<Caractere> getTf() {
 		return tf;
 	}
+	
+	public int getTotalSize() {
+		int totalSize = 0;
+		for(Caractere caractere : tf) {
+			totalSize += caractere.getNbr();
+		}
+		
+		return totalSize;
+	}
 }
