@@ -2,6 +2,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -18,7 +19,7 @@ public class TableFrequences {
 			
 			// Lecture du fichier a compresser
 			InputStream in = Files.newInputStream(path);
-			BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+			BufferedReader reader = new BufferedReader(new InputStreamReader(in, Charset.forName("ISO-8859-1")));
 			
 			int ch = 0;
 			while((ch = reader.read()) != -1){
@@ -51,17 +52,7 @@ public class TableFrequences {
 		} catch (IOException e) {
 			
 		}
-		
-		printTable();
 	}
-
-	public void printTable(){
-		for(int i=0; i<getTf().size(); i++){
-			System.out.println(getTf().get(i).getNom() + " --> " + getTf().get(i).getNbr());
-		}
-		System.out.println();
-	}
-	
 	
 	public void sortTable() {
 		Collections.sort(getTf(), new Comparator<Caractere>() {

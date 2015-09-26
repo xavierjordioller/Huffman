@@ -1,13 +1,16 @@
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -20,29 +23,25 @@ public class Huffman {
 	private static TableFrequences tf;
 
 	public static void main(String[] args) {
-
-		createFile();
-
-		decodeFile();
+		if(createFile() > -1) {
+			decodeFile();
+		}
 	}
 
-	private static void createFile() {
-		for(int i = 0; i < 256; i++) {
-			System.out.println(i + " = " + (char)i);
-		}
-		
-		
-		// Appel au constructeur de la classe TableFrequences
+	private static int createFile() {
 		tf = new TableFrequences(
 				Paths.get("C:/Users/AK79880/testing/encode.txt"));
-		tf.printTable();
-		// tf.sortTable();
-		tf.printTable();
-
-		Map<Integer, String> map = BinaryTree.creerCorespondance(
-				creerArbre(tf), "");
+		if(tf.getTf().size() == 0) return - 1;
+		
+		Map<Integer, String> map = new HashMap<Integer, String>();
+		if(tf.getTf().size() == 1) {
+			map.put(tf.getTf().get(0).getNom(), "0");
+		} else {
+			map = BinaryTree.creerCorespondance(
+					creerArbre(tf), "");
+		}
+		
 		String encodage = encoderFichier(map);
-		// on le normalize a un multiple de 8 (rajoute de 0 a la fin )
 
 		if (encodage.length() % 8 != 0) {
 			char[] chars = new char[8 - (encodage.length() % 8)];
@@ -51,11 +50,16 @@ public class Huffman {
 		}
 
 		createFile(encodage, map, tf.getTotalSize());
-	}
+		return 1;
+	}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
 
 	private static BinaryTree creerArbre(TableFrequences tf) {
 		BinaryTree root = new BinaryTree();
 		Map<Caractere, BinaryTree> binaryTrees = new HashMap<Caractere, BinaryTree>();
+		if(tf.getTf().size() == 1) {
+			root.setNode(tf.getTf().get(0));
+			return root;
+		}
 		while (tf.getTf().size() > 1) {
 			tf.sortTable();
 			Caractere newCaractere = new Caractere(-1);
@@ -90,7 +94,7 @@ public class Huffman {
 					.get("C:/Users/AK79880/testing/encode.txt"));
 
 			BufferedReader reader = new BufferedReader(
-					new InputStreamReader(in));
+					new InputStreamReader(in, "ISO-8859-1"));
 			int ch = 0;
 
 			while ((ch = reader.read()) != -1) {
@@ -106,14 +110,31 @@ public class Huffman {
 		PrintWriter writer = null;
 
 		try {
-			writer = new PrintWriter("C:/Users/AK79880/testing/encoded.txt");
+			writer = new PrintWriter("C:/Users/AK79880/testing/encoded.txt", "ISO-8859-1");
 		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		}
 		StringBuilder textToWrite = new StringBuilder();
 		for (Entry<Integer, String> entry : map.entrySet()) {
 			int integer = entry.getKey();
-			textToWrite.append(entry.getValue() + "=" + (char)integer);
+			String binaryTreeValue = entry.getValue();
+			int characterAdded = 0;
+			
+			if (binaryTreeValue.length() % 8 != 0) {
+				char[] chars = new char[8 - (binaryTreeValue.length() % 8)];
+				characterAdded = 8 - (binaryTreeValue.length() % 8);
+				Arrays.fill(chars, '0');
+				binaryTreeValue += new String(chars);
+			}
+			
+			textToWrite.append(binaryTreeValue.length() / 8);
+			textToWrite.append(characterAdded);
+			for(int i = 0; i < binaryTreeValue.length(); i+=8) {
+				textToWrite.append(new String(new byte[]{(byte)Integer.parseInt(binaryTreeValue.substring(i, i+8), 2)}, Charset.forName("ISO-8859-1")));
+			}
+			textToWrite.append(new String(new byte[]{(byte)integer}, Charset.forName("ISO-8859-1")));
 		}
 		textToWrite.append("|");
 		writer.write(textToWrite.toString());
@@ -121,8 +142,8 @@ public class Huffman {
 		StringBuilder encodedText = new StringBuilder();
 		for (int i = 0; i < encoding.length(); i += 8) {
 			String tempEncoding = encoding.substring(i, i + 8);
-			encodedText.append(Integer.parseInt(tempEncoding, 2));
-			encodedText.append(".");
+			byte myByte = (byte)Integer.parseInt(tempEncoding, 2);
+			encodedText.append(new String(new byte[]{myByte}, Charset.forName("ISO-8859-1")));
 		}
 		
 		encodedText.insert(0, size + "|");
@@ -133,35 +154,50 @@ public class Huffman {
 
 	private static void decodeFile() {
 		try {
-			InputStream in = Files.newInputStream(Paths
-					.get("C:/Users/AK79880/testing/encoded.txt"));
-			BufferedReader reader = new BufferedReader(
-					new InputStreamReader(in));
+			Reader bytestream = null;
+				bytestream = new BufferedReader(new InputStreamReader(
+				        new FileInputStream("C:/Users/AK79880/testing/encoded.txt"), "ISO-8859-1"));
+			
 
 			Map<String, Character> associativeMap = new HashMap<String, Character>();
 			
 			int ch = 0;
 			do {
-				StringBuilder key = new StringBuilder(readUntil(ch, '=', reader));
-				associativeMap.put(key.toString(), (char)reader.read());
-				ch = reader.read();
-			} while(ch != '|');
-			
-			int numberOfCharacters = Integer.parseInt(readUntil(0, '|', reader));
-			
-			// need to get everything here
-			StringBuilder textEncoded = new StringBuilder();
-			/*while ((ch = reader.read()) != -1) {
-				StringBuilder binaryString = new StringBuilder(Integer.toBinaryString(ch));
+				StringBuilder binaryTreeCode = new StringBuilder();
+				char char1 = (char)bytestream.read();
+				if(char1 == '|') break;
+				int numberOfEight = Integer.parseInt(String.valueOf(char1));
+				char char2 = (char)bytestream.read();
+				int numberCharactersToRemove = Integer.parseInt(String.valueOf(char2));
+				for(int i = 0; i < numberOfEight; i++) {
+					byte character = (byte)bytestream.read();
+					int integerBase10 = character & 0xFF;
+					StringBuilder binaryCode = new StringBuilder(Integer.toBinaryString(integerBase10));
+					if(binaryCode.length() % 8 != 0) {
+						char[] chars = new char[8 - (binaryCode.length() % 8)];
+						Arrays.fill(chars, '0');
+						binaryCode.insert(0, chars);
+					}
+					
+					binaryTreeCode.append(binaryCode.toString());
+				}
 				
-				textEncoded.append(binaryString);
-			}*/
+				if(numberCharactersToRemove > 0) {
+					binaryTreeCode.replace(binaryTreeCode.length() - numberCharactersToRemove, binaryTreeCode.length(), "");
+				}
+				
+				associativeMap.put(binaryTreeCode.toString(), new String(new byte[]{(byte)(int)bytestream.read()}, Charset.forName("ISO-8859-1")).charAt(0));
+				
+			} while(true);
 			
-			String line = reader.readLine();
-			line = line.substring(0, line.length() - 1);
+			int numberOfCharacters = Integer.parseInt(readUntil(0, '|', bytestream));
+			
+			// need to get everything here			
 			StringBuilder encodedBinaryString = new StringBuilder();
-			for(String number : line.split("\\.")) {
-				StringBuilder binaryNumber = new StringBuilder(Integer.toBinaryString(Integer.parseInt(number)));
+			while((ch = bytestream.read()) != -1) {
+				byte number = (byte)ch;
+				int integerBase10 = number & 0xFF;
+				StringBuilder binaryNumber = new StringBuilder(Integer.toBinaryString(integerBase10));
 				if (binaryNumber.length() % 8 != 0) {
 					char[] chars = new char[8 - (binaryNumber.length() % 8)];
 					Arrays.fill(chars, '0');
@@ -184,8 +220,7 @@ public class Huffman {
 			}
 				
 			
-			reader.close();
-			in.close();
+			bytestream.close();
 			createNewFile(decodedString.toString());
 		} catch (IOException e) {
 
@@ -195,8 +230,10 @@ public class Huffman {
 	private static void createNewFile(String output) {
 		PrintWriter writer = null;
 		try {
-			writer = new PrintWriter("C:/Users/AK79880/testing/decoded.txt");
+			writer = new PrintWriter("C:/Users/AK79880/testing/decoded.txt", "ISO-8859-1");
 		} catch (FileNotFoundException e) {
+			e.printStackTrace();																																								
+		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		}
 		writer.print(output);
@@ -210,7 +247,7 @@ public class Huffman {
 		return rev;
 	}
 	
-	private static String readUntil(int charToAdd, char character, BufferedReader reader) {
+	private static String readUntil(int charToAdd, char character, Reader reader) {
 		StringBuilder builder = new StringBuilder();
 		if(charToAdd != 0)
 			builder.append((char)charToAdd);
