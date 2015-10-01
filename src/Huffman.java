@@ -17,20 +17,38 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Scanner;
 
 public class Huffman {
 
 	private static TableFrequences tf;
+	private static String encodedFilePath;
+	private static String directoryPath;
 
 	public static void main(String[] args) {
+		Scanner reader = new Scanner(System.in);
+		
+		System.out.println("Please specify your file to encode(with the full path)");
+		System.out.println("File without any characters won't be encoded");
+		System.out.print("> ");
+	    encodedFilePath = reader.next();
+	    File file = new File(encodedFilePath);
+	    if(!file.exists()) {
+	    	System.out.println("The file specified doesn't exist.");
+	    	reader.close();
+	    	return;
+	    }
+		directoryPath = file.getParent();
+		reader.close();
+		
 		if(createFile() > -1) {
 			decodeFile();
 		}
 	}
 
-	private static int createFile() {
+	private static int createFile() {		
 		tf = new TableFrequences(
-				Paths.get("C:/Users/AK79880/testing/encode.txt"));
+				Paths.get(encodedFilePath));
 		if(tf.getTf().size() == 0) return - 1;
 		
 		Map<Integer, String> map = new HashMap<Integer, String>();
@@ -91,7 +109,7 @@ public class Huffman {
 		StringBuilder stringBuilder = new StringBuilder();
 		try {
 			in = Files.newInputStream(Paths
-					.get("C:/Users/AK79880/testing/encode.txt"));
+					.get(encodedFilePath));
 
 			BufferedReader reader = new BufferedReader(
 					new InputStreamReader(in, "ISO-8859-1"));
@@ -110,7 +128,7 @@ public class Huffman {
 		PrintWriter writer = null;
 
 		try {
-			writer = new PrintWriter("C:/Users/AK79880/testing/encoded.txt", "ISO-8859-1");
+			writer = new PrintWriter(directoryPath + "/encodedFile.txt", "ISO-8859-1");
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (UnsupportedEncodingException e) {
@@ -156,7 +174,7 @@ public class Huffman {
 		try {
 			Reader bytestream = null;
 				bytestream = new BufferedReader(new InputStreamReader(
-				        new FileInputStream("C:/Users/AK79880/testing/encoded.txt"), "ISO-8859-1"));
+				        new FileInputStream(directoryPath + "/encodedFile.txt"), "ISO-8859-1"));
 			
 
 			Map<String, Character> associativeMap = new HashMap<String, Character>();
@@ -230,7 +248,7 @@ public class Huffman {
 	private static void createNewFile(String output) {
 		PrintWriter writer = null;
 		try {
-			writer = new PrintWriter("C:/Users/AK79880/testing/decoded.txt", "ISO-8859-1");
+			writer = new PrintWriter(directoryPath + "/decodedFile.txt", "ISO-8859-1");
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();																																								
 		} catch (UnsupportedEncodingException e) {
